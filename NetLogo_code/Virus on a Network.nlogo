@@ -3,6 +3,9 @@ turtles-own
   infected?           ;; if true, the turtle is infectious
   resistant?          ;; if true, the turtle can't be infected
   virus-check-timer   ;; number of ticks since this turtle's last virus-check
+
+  isolating?          ;; if true, the turtle is social-distancing in this round and not interacting with its neighbors
+  essential?          ;; if true, the turtle always has to interact
 ]
 
 to setup
@@ -12,6 +15,8 @@ to setup
   ask n-of initial-outbreak-size turtles
     [ become-infected ]
   ask links [ set color white ]
+  ask n-of 10 turtles
+    [ become-essential ]
   reset-ticks
 end
 
@@ -77,6 +82,13 @@ to become-resistant  ;; turtle procedure
   ask my-links [ set color gray - 2 ]
 end
 
+to become-essential  ;;
+  set infected? false
+  set resistant? false
+  set color green
+  ask my-links [ set color green - 2 ]
+end
+
 to spread-virus
   ask turtles with [infected?]
     [ ask link-neighbors with [not resistant?]
@@ -103,8 +115,8 @@ end
 GRAPHICS-WINDOW
 265
 10
-724
-470
+944
+690
 -1
 -1
 11.0
@@ -117,10 +129,10 @@ GRAPHICS-WINDOW
 0
 0
 1
--20
-20
--20
-20
+-30
+30
+-30
+30
 1
 1
 1
