@@ -8,6 +8,7 @@ turtles-own
   recovered?           ;;if true, the person is recovered/removed and cannot be infected
   how-long-infected    ;;how long the person has been infected
   is-working?          ;;if true, the person attends workplace
+  score-player
 ]
 
 workers-own
@@ -19,6 +20,7 @@ workers-own
 globals
 [
   cost-disease
+  max-infected
 ]
 ;;;;;;;;;;;;;;;;;;;;
 ;;;;Setup procedures
@@ -30,7 +32,8 @@ to setup
   setup-spatially-clustered-network
   ask n-of (initial-outbreak-frac * (count turtles)) turtles
     [ become-infected ]
-  set cost-disease 100
+  set cost-disease 10
+  set max-infected (count turtles with [infected?])
   reset-ticks
 end
 
@@ -44,7 +47,7 @@ to setup-people
     set breed workers
     set is-working? true
     become-susceptible
-
+    set score-player 0
   ]
   distribute-essential-workers
   distribute-cost-stay
@@ -97,6 +100,7 @@ to go
     update-knowledge
     decide
   ]
+  calculate-max-infected
 ;  do-virus-checks
   tick
 
@@ -115,7 +119,13 @@ to progress-disease
     set how-long-infected (how-long-infected + 1)
     if how-long-infected > symptomatic-after
     [ become-symptomatic ]
+
   ]
+
+  ask turtles [
+    set score-player (score-player + random 10)
+  ]
+
 end
 
 to maybe-recover
@@ -125,8 +135,11 @@ to maybe-recover
 end
 
 to update-knowledge
-  if count link-neighbors != 0
-    [ set risk-factor (count link-neighbors with [symptomatic?])/(count link-neighbors) ]
+;  ifelse count link-neighbors = 0
+;      [set risk-factor 0]
+;      [set risk-factor (count link-neighbors with [symptomatic?])/(count link-neighbors)]
+
+  set risk-factor (count link-neighbors with [symptomatic?])/(count link-neighbors)
 end
 
 to decide
@@ -144,32 +157,7 @@ to attend-work
   set is-working? true
   set shape "person business"
 end
-;
-;
-;;;;;;;;;;;;;;;;;;;;;
-;;;;;Go procedure
-;;;;;;;;;;;;;;;;;;;;;
-;to go
-;  ;;let ng-infected-previous count turtles with [ infected? ]
-;  if all? turtles [not infected?]
-;    [ stop ]
-;  ask turtles [clear-count]
-;  ask turtles with [not infected? and not vaccinated?]
-;    [ maybe-vaccinate ]
-;  ask turtles with [infected?]
-;    [ infect
-;      maybe-recover
-;    ]
-;  ask turtles
-;    [ set nl-infected count link-neighbors with [ infected? ]]
-;  tick
-;end
-;
-;
-;; Turtles are displayed in 3 different colors depending on their health status
-;; White is susceptible
-;; Green is a cured person
-;; Red is an infected person
+
 to become-susceptible  ;; turtle procedure
   set infected? false
   set recovered? false
@@ -195,67 +183,20 @@ to become-recovered ;; turtle procedure
   set symptomatic? false
   set color green
 end
-;to attend-work ;; people procedure
-;
-;to clear-count
-;  set nb-infected 0
-;  set nb-recovered 0
-;end
-;
-;
-;;;infection can only happen to immediate neighbor who is susceptible
-;to infect
-;  ask link-neighbors with [not infected? and not vaccinated?]
-;        [ if random-float 100 < infection-rate
-;            [ become-infected
-;              set nb-infected (nb-infected + 1)
-;              ]
-;            ]
-;end
-;
-;
-;;;susceptible people can choose to vaccinate
-;to maybe-vaccinate
-;  ;;strategy 1: susceptible people choose to be vaccinated at the rate vaccinate-rate
-;  if vaccinate_strategy = "random"
-;  [ if random-float 100 < vaccinate-rate
-;    [ become-vaccinated
-;      ]
-;    ]
-;  ;;strategy 2: susceptible people choose to be vaccinated if the fraction of infected
-;  ;;people among its immediate neighbors exceeds a threshold c
-;  if vaccinate_strategy ="local_proximity"
-;  [ if nl-infected > c * count link-neighbors
-;    [ become-vaccinated ]
-;    ]
-;  ;;strategy 3: susceptible people choose to be vaccinated if the fraction of infected
-;  ;;people among entire populstion exceeds a threshold c
-;  if vaccinate_strategy ="global_proximity"
-;  [ let new-infected sum [ nb-infected ] of turtles
-;    let new-recovered sum [ nb-recovered ] of turtles
-;
-;    ;;number of infected people at the previous tick:
-;    set ng-infected-previous
-;    count turtles with [ infected? ] + new-recovered - new-infected
-;
-;    if ng-infected-previous / number-of-people > c
-;    [ become-vaccinated ]
-;    ]
-;end
-;
-;
-;;;for infected people, there is a chance for recovery
-;to maybe-recover
-;  set infection-length infection-length + 1
-;  ;; If people have been infected for more than the recovery-time
-;  ;; then there is a chance for recovery
-;  if infection-length > recovery-time
-;  [if random-float 100 < recovery-rate
-;    [ become-susceptible
-;      set nb-recovered (nb-recovered + 1)
-;      ]
-;  ]
-;end
+
+to calculate-max-infected
+  let x (count turtles with [infected?])
+  if x > max-infected
+  [set max-infected x]
+end
+
+to-report max-infected-prop
+  report max-infected / number-of-people
+end
+
+
+
+
 @#$#@#$#@
 GRAPHICS-WINDOW
 465
@@ -332,10 +273,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-16
-189
-188
-222
+14
+151
+186
+184
 average-neighbor
 average-neighbor
 0
@@ -362,15 +303,15 @@ NIL
 HORIZONTAL
 
 SLIDER
-22
-474
-450
-507
+15
+203
+188
+236
 virus-spread-chance
 virus-spread-chance
 0
 0.2
-0.0063
+0.0132
 0.0001
 1
 NIL
@@ -399,8 +340,8 @@ PLOT
 1330
 251
 Disease Spread
-NIL
-NIL
+Time
+Count
 0.0
 10.0
 0.0
@@ -414,15 +355,15 @@ PENS
 "susceptible" 1.0 0 -7500403 true "" "plot count turtles with [not infected? and not recovered?]"
 
 SLIDER
-22
-512
-450
-545
+218
+203
+395
+236
 recovery-chance
 recovery-chance
 0
 0.1
-0.0024
+0.0025
 0.0001
 1
 NIL
@@ -434,8 +375,8 @@ PLOT
 1331
 524
 Stay home?
-NIL
-NIL
+Time
+Count
 0.0
 10.0
 0.0
@@ -448,19 +389,49 @@ PENS
 "at-home" 1.0 0 -8431303 true "" "plot count turtles with [not is-working?]"
 
 SLIDER
-21
-386
-200
-419
+217
+151
+396
+184
 symptomatic-after
 symptomatic-after
 0
 100
-94.0
+93.0
 1
 1
 NIL
 HORIZONTAL
+
+PLOT
+16
+258
+396
+506
+Average Score 
+Time
+Average Score
+0.0
+10.0
+0.0
+10.0
+true
+true
+"" ""
+PENS
+"Essential workers" 1.0 0 -16777216 true "" "plot mean [score-player] of turtles with [breed = essential-workers]"
+"Non-essential workers" 1.0 0 -14070903 true "" "plot mean [score-player] of turtles with [breed = workers]"
+
+MONITOR
+16
+514
+191
+559
+Maximum Infected Proportion
+max-infected-prop
+3
+1
+11
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -883,7 +854,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.1.1
+NetLogo 6.1.0
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
