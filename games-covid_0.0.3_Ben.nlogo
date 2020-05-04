@@ -57,6 +57,9 @@ to setup-people
   ask n-of 100 turtles [
     set player-strategy "random-strategy"
   ]
+  ask n-of 50 turtles [
+    set player-strategy "periodic-strategy"
+  ]
 
   distribute-essential-workers
   distribute-cost-stay
@@ -103,16 +106,12 @@ to go
   maybe-recover
   ask workers with [not recovered?]
   [
-;     set virus-check-timer virus-check-timer + 1
-;     if virus-check-timer >= virus-check-frequency
-;       [ set virus-check-timer 0 ]
     update-knowledge
     decide
   ]
   calculate-max-infected
-;  do-virus-checks
-  tick
 
+  tick
 end
 
 to spread-virus
@@ -147,6 +146,7 @@ to update-knowledge
   ]
 end
 
+
 to decide
    stay-home
 
@@ -154,11 +154,27 @@ to decide
      if (not symptomatic?) and (random 10 <= 7)
      [ attend-work ]
    ]
+
    if player-strategy = "risk-factor-strategy" [
      if (not symptomatic?) and (cost-stay > risk-factor * cost-disease)
      [ attend-work ]
    ]
+
+  if player-strategy = "periodic-strategy" [
+    if (not symptomatic?) and (ticks mod 6 = 0)
+    [ attend-work ]
+  ]
+
+  if player-strategy = "never-distance-strategy" [
+    if (not symptomatic?)
+    [ attend-work ]
+  ]
+
+  ;;
+  ;; Implement new strategies here
+  ;;
 end
+
 
 to stay-home
   set is-working? false
