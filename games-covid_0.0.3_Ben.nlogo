@@ -16,11 +16,15 @@ workers-own
   risk-factor          ;; float indicating person's perceived probability of getting infected
   cost-stay            ;; number indicating person's cost of staying home
   player-strategy      ;; string containing the player's strategy
+  stay-home-ticks      ;; count how many successive days a turtle stays at home
 ]
 
 globals
 [
-  cost-disease         ;; the one-time cost of contracting the disease - should be high compared to the cost of staying at home
+  cost-disease         ;; the one-time cost of contracting the disease
+  cost-symptomatic     ;; the one-time cost of developing symptomps - should be high compared to the cost of staying at home
+  repeated-distance-threshold  ;; sets the number of days after a turtle incurs the additional cost for repeatedly staying at home
+  cost-repeated-distance ;; additional cost for staying at home for repeated-distance-threshold days
   max-infected
 ]
 
@@ -34,7 +38,9 @@ to setup
   setup-spatially-clustered-network
   ask n-of (initial-outbreak-frac * (count turtles)) turtles
     [ become-infected ]
-  set cost-disease 1000
+  set cost-disease 50        ;; TODO: find appropriate value
+  set cost-symptomatic 1000  ;; TODO: find appropriate value
+  set cost-repeated-distance 5 ;; TODO: set this value; set as workers-own variable and draw randomly?
   set max-infected (count turtles with [infected?])
   reset-ticks
 end
@@ -51,6 +57,7 @@ to setup-people
     become-susceptible
     set score-player 0
     set player-strategy "risk-factor-strategy" ;; default strategy
+    set stay-home-ticks 0
   ]
 
   ;; Distribute different strategies
@@ -163,6 +170,9 @@ end
 to stay-home
   set is-working? false
   set shape "house"
+  set stay-home-ticks (stay-home-ticks + 1)
+  if stay-home-ticks >= repeated-distance-threshold
+  [ set score-player (score-player - cost-repeated-distance) ]
 
   set score-player (score-player - cost-stay)
 end
@@ -170,6 +180,7 @@ end
 to attend-work
   set is-working? true
   set shape "person business"
+  set stay-home-ticks 0
 end
 
 to become-susceptible  ;; turtle procedure
@@ -191,6 +202,8 @@ end
 to become-symptomatic ;; turtle procedure
   set symptomatic? true
   set color red
+
+  set score-player (score-player - cost-symptomatic)
 end
 
 to become-recovered ;; turtle procedure
@@ -365,9 +378,10 @@ true
 true
 "" ""
 PENS
-"infected" 1.0 0 -5298144 true "" "plot count turtles with [infected?]"
+"infected-asymptomatic" 1.0 0 -1184463 true "" "plot count turtles with [infected? and not symptomatic?]"
 "recovered" 1.0 0 -14439633 true "" "plot count turtles with [recovered?]"
 "susceptible" 1.0 0 -7500403 true "" "plot count turtles with [not infected? and not recovered?]"
+"infected-symptomatic" 1.0 0 -2674135 true "" "plot count turtles with [symptomatic?]"
 
 SLIDER
 218
